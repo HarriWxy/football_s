@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.5)
 
+# Honor Boost_ROOT when a locally built Boost is supplied.  CMP0074 was added
+# after this project's minimum CMake version, so guard it for old platforms.
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
+
 if(WIN32)
   # Check for required Environment variables
   if(NOT DEFINED CMAKE_GENERATOR_PLATFORM)
@@ -67,7 +73,9 @@ include_directories(${SDL2_GFX_DIRS})
 
 if(UNIX)
   if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.12")
-    find_package(Python COMPONENTS Development REQUIRED)
+    # Request Interpreter as well as development files, so CMake guarantees
+    # that Python_EXECUTABLE and the headers/libraries are from one version.
+    find_package(Python COMPONENTS Interpreter Development REQUIRED)
   else()
     # Starting from CMake 3.12 FindPythonLibs was deprecated in favour of FindPython.
     # But Ubuntu 18.04 and other older distributions are shipped with CMake version < 3.12,

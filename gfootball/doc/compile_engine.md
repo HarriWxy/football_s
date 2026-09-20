@@ -145,6 +145,56 @@ Finally, build the game environment:
 python3 -m pip install .
 ```
 
+### Python 3.13 from uv
+
+Ubuntu's `libboost-python-dev` is built for the distribution Python version.
+When using a Python 3.13 interpreter managed by `uv`, build a matching
+Boost.Python library and keep it in a separate prefix:
+
+```shell
+FOOTBALL_ROOT="$(pwd)"
+GFOOTBALL_PYTHON="$FOOTBALL_ROOT/.venv/bin/python"
+PYTHON_ROOT="$("$GFOOTBALL_PYTHON" -c 'import sys; print(sys.base_prefix)')"
+BOOST_PREFIX="$FOOTBALL_ROOT/.cache/boost-python313"
+
+mkdir -p "$FOOTBALL_ROOT/.cache"
+curl -fL -o "$FOOTBALL_ROOT/.cache/boost_1_92_0.tar.gz" \
+  https://archives.boost.io/release/1.92.0/source/boost_1_92_0.tar.gz
+tar -C "$FOOTBALL_ROOT/.cache" -xf "$FOOTBALL_ROOT/.cache/boost_1_92_0.tar.gz"
+cd "$FOOTBALL_ROOT/.cache/boost_1_92_0"
+
+./bootstrap.sh --with-python="$GFOOTBALL_PYTHON" --with-python-root="$PYTHON_ROOT"
+./b2 -j"$(nproc)" --layout=system --with-python --with-thread --with-system \
+  --with-filesystem variant=release link=shared threading=multi \
+  --stagedir="$BOOST_PREFIX" stage
+mkdir -p "$BOOST_PREFIX/include"
+cp -a boost "$BOOST_PREFIX/include/"
+```
+
+`stage` deliberately replaces `install`: Boost 1.92's `install` target can
+fail while processing the unrelated header-only Histogram library. `stage`
+builds the requested binary libraries without that target; the final `cp`
+provides the headers expected by CMake.
+
+Confirm that the generated library is version-specific:
+
+```shell
+find "$BOOST_PREFIX/lib" -maxdepth 1 -name 'libboost_python313.so*'
+```
+
+Then build/install Football with the same interpreter and Boost prefix:
+
+```shell
+cd "$FOOTBALL_ROOT"
+GFOOTBALL_PYTHON="$GFOOTBALL_PYTHON" \
+GFOOTBALL_BOOST_ROOT="$BOOST_PREFIX" \
+  "$GFOOTBALL_PYTHON" -m pip install ./engines/gfootball
+```
+
+`GFOOTBALL_PYTHON` forces CMake to use the selected Python interpreter,
+headers, and library. `GFOOTBALL_BOOST_ROOT` forces it to use the matching
+Boost libraries and embeds their library directory as a build RPATH.
+
 ## Development mode
 
 You can install Google Research Football
