@@ -9,6 +9,8 @@ dist/
 football-env*/
 .cache/
 uv.lock
+*.whl
+
 
 # CMake related directories and files
 third_party/gfootball_engine/build*
